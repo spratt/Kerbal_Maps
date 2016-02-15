@@ -63,8 +63,7 @@
         return map_data;
     }
 
-    (function get_csv(url) {
-        console.log(url);
+    function get_csv(url) {
         var xhr = new XMLHttpRequest();
         xhr.open('GET', url);
         xhr.send(null);
@@ -81,5 +80,51 @@
                 }
             }
         };
-    })('data/Kerbin_elevation_720x360_KavrayskiyVII_data.csv');
+    }
+
+    function populate_dropdown(select, base, index, callback) {
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', index);
+        xhr.send(null);
+        xhr.onreadystatechange = function() {
+            var DONE = 4;
+            var OK   = 200;
+            if (xhr.readyState === DONE) {
+                if (xhr.status === OK) {
+                    var files = JSON.parse(xhr.responseText);
+                    for(var i = 0; i < files.length; ++i) {
+                        select.options[select.options.length] = new Option(files[i], base + files[i]);
+                    }
+                    if (callback !== undefined)
+                        callback();
+                } else {
+                    console.error('XHR: ' + xhr.status);
+                }
+            }
+        };
+    }
+
+    function set_image(image_src) {
+        var image = document.getElementById('image');
+        image.src = image_src;
+    }
+
+    (function start() {
+        var select_data = document.getElementById('data_src');
+        var select_image = document.getElementById('image_src');
+        var data_button = document.getElementById('draw_data');
+        var image_button = document.getElementById('draw_image');
+        data_button.onclick = function() {
+            get_csv(select_data.value);
+        };
+        image_button.onclick = function() {
+            set_image(select_image.value);
+        };
+        populate_dropdown(select_data, 'data/', 'data/index.json', function() {
+            data_button.click();
+        });
+        populate_dropdown(select_image, 'images/', 'images/index.json', function() {
+            image_button.click();
+        });
+    })();
 }).call( this );
