@@ -2,8 +2,6 @@
     'use strict';
     var WIDTH=720;
     var HEIGHT=360;
-    var ALT_MIN=-2000;
-    var ALT_MAX=2000;
     var RGB_MIN=0;
     var RGB_MAX=255;
     var RGB_RANGE=RGB_MAX-RGB_MIN;
@@ -20,6 +18,9 @@
     function draw_csv(canvas, map_data) {
         var context = canvas.getContext('2d');
         var image = context.createImageData(WIDTH, HEIGHT);
+        var ALT_MIN = map_data.ALT_MIN;
+        var ALT_MAX = map_data.ALT_MAX;
+        var ALT_AVG = map_data.ALT_AVG;
         for(var col = 0; col < WIDTH; ++col) {
             for(var row = 0; row < HEIGHT; ++row) {
                 var r = 0;
@@ -28,12 +29,18 @@
                 var entry = map_data[col][row];
                 if(entry === undefined) {
                     // leave black
-                } else if(entry.alt < 0) {
-                    b = RGB_MIN + entry.alt * (RGB_RANGE/ALT_MIN);
-                    g = RGB_MAX - b;
                 } else {
-                    r = RGB_MIN + entry.alt * (RGB_RANGE/ALT_MAX);
-                    g = RGB_MAX - r;
+                    if(entry.alt < ALT_AVG) {
+                        var alt = entry.alt - ALT_MIN;
+                        var ALT_RANGE = ALT_AVG - ALT_MIN;
+                        g = RGB_MIN + alt * (RGB_RANGE/ALT_RANGE);
+                        b = RGB_MAX - g;
+                    } else {
+                        var alt = entry.alt - ALT_AVG;
+                        var ALT_RANGE = ALT_MAX - ALT_AVG;
+                        r = RGB_MIN + alt * (RGB_RANGE/ALT_RANGE);
+                        g = RGB_MAX - r;
+                    }
                 }
                 set_pixel_colour(image, col, row, r, g, b, ALPHA);
             }
@@ -47,19 +54,33 @@
         for(var col = 0; col < WIDTH; ++col) {
             map_data[col] = [];
         }
+        var ALT_MIN = Number.MAX_VALUE;
+        var ALT_MAX = Number.MIN_VALUE;
+        var ALT_SUM = 0;
+        var NUM_ROWS = csv_array.length - 1;
         for(var n = 1; n < csv_array.length; ++n) {
             var entry = csv_array[n];
             var row = HEIGHT - entry[0];
             var col = entry[1];
             var lat = entry[2];
             var lon = entry[3];
-            var alt = entry[4];
+            var alt = Number(entry[4]);
+            ALT_MIN = (alt < ALT_MIN) ? alt : ALT_MIN;
+            ALT_MAX = (alt > ALT_MAX) ? alt : ALT_MAX;
+            if(isNaN(alt)) {
+                --NUM_ROWS;
+            } else {
+                ALT_SUM += alt;
+            }
             map_data[col][row] = {
                 lat: lat,
                 lon: lon,
                 alt: alt
             };
         }
+        map_data.ALT_MIN = ALT_MIN;
+        map_data.ALT_MAX = ALT_MAX;
+        map_data.ALT_AVG = ALT_SUM / NUM_ROWS;
         return map_data;
     }
 
